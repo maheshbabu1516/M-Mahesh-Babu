@@ -503,7 +503,13 @@ const AISnackAdvisor = () => {
     if (!movie.trim()) return;
     setLoading(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const apiKey = (typeof process !== 'undefined' && process.env?.GEMINI_API_KEY) || '';
+      if (!apiKey) {
+        setSuggestion("Set your GEMINI_API_KEY to get AI recommendations!");
+        setLoading(false);
+        return;
+      }
+      const ai = new GoogleGenAI({ apiKey });
       const prompt = `I am at a cinema watching the movie "${movie}". What kind of snacks (popcorn, nachos, drinks, combos) should I order? Give me a short, creative, and appetite-inducing recommendation in 2 sentences. Use cinematic language.`;
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
@@ -776,6 +782,7 @@ const OrderSuccess = () => {
 // --- Main App ---
 
 export default function App() {
+  console.log("App Rendering...");
   const [cartOpen, setCartOpen] = useState(false);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [activeOrders, setActiveOrders] = useState<ActiveOrder[]>([]);
