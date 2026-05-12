@@ -22,6 +22,7 @@ export interface ActiveOrder {
   id: string;
   items: CartItem[];
   timestamp: string;
+  createdAt: number;
   status: 'Preparing' | 'Out for Delivery' | 'Delivered' | 'Received';
   estimatedArrival: string;
   isDelivered?: boolean;

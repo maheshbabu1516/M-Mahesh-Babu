@@ -260,65 +260,89 @@ const AdminDashboard = () => {
 };
 
 const ActiveOrdersTracker = ({ orders }: { orders: ActiveOrder[] }) => {
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   if (orders.length === 0) return null;
 
   return (
     <div className="fixed bottom-6 left-6 right-6 md:left-auto md:w-96 z-40 space-y-3">
       <AnimatePresence>
-        {orders.map((order) => (
-          <motion.div
-            key={order.id}
-            initial={{ opacity: 0, y: 50, scale: 0.9 }}
-            animate={{ 
-              opacity: 1, 
-              y: 0, 
-              scale: 1,
-              backgroundColor: order.isDelivered ? 'rgba(34, 197, 94, 0.1)' : 'rgba(17, 17, 17, 1)'
-            }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            className={`border border-white/10 rounded-2xl p-4 shadow-2xl flex flex-col gap-4 overflow-hidden relative group transition-colors duration-500`}
-          >
-            <div className={`absolute top-0 left-0 w-1 h-full ${order.isDelivered ? 'bg-green-500' : 'bg-red-600'} transition-colors duration-500`} />
-            
-            <div className="flex items-center gap-4">
-              <div className="bg-white/5 p-3 rounded-xl">
-                {order.status === 'Delivered' ? (
-                  <CheckCircle2 className="w-6 h-6 text-green-500" />
-                ) : (
-                  <Timer className="w-6 h-6 text-red-500 animate-pulse" />
-                )}
-              </div>
-              <div className="flex-1">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">Order #{order.id.split('-').slice(-1)[0]}</span>
-                  <span className={`text-[10px] font-bold uppercase flex items-center gap-1 ${order.status === 'Delivered' ? 'text-green-500' : 'text-red-500'}`}>
-                    {order.status === 'Delivered' ? (
-                      <>STAFF AT SEAT</>
-                    ) : (
-                      <>
-                        <Zap className="w-3 h-3 fill-current" />
-                        PREPARING
-                      </>
-                    )}
-                  </span>
-                </div>
-                <h4 className={`font-bold text-sm truncate ${order.status === 'Delivered' ? 'text-green-500' : ''}`}>
-                   {order.items.map(i => i.name).join(', ')}
-                </h4>
-              </div>
-            </div>
+        {orders.map((order) => {
+          const timeElapsed = now - (order.createdAt || Date.now());
+          const isReadyToConfirm = timeElapsed >= 60000;
+          const secondsRemaining = Math.max(0, 60 - Math.floor(timeElapsed / 1000));
+          const isDelivered = order.status === 'Delivered';
 
-            <button
-              onClick={() => {
-                fetch(`/api/orders/${order.id}/confirm`, { method: 'PUT' });
+          return (
+            <motion.div
+              key={order.id}
+              initial={{ opacity: 0, y: 50, scale: 0.9 }}
+              animate={{ 
+                opacity: 1, 
+                y: 0, 
+                scale: 1,
+                backgroundColor: isDelivered ? 'rgba(34, 197, 94, 0.1)' : 'rgba(17, 17, 17, 1)'
               }}
-              className={`w-full ${order.status === 'Delivered' ? 'bg-green-600 hover:bg-green-500 shadow-green-600/20' : 'bg-white/10 hover:bg-white/20'} py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all text-white border-none`}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className={`border border-white/10 rounded-2xl p-4 shadow-2xl flex flex-col gap-4 overflow-hidden relative group transition-colors duration-500`}
             >
-              <CheckCircle2 className="w-4 h-4" />
-              I've Successfully Received It
-            </button>
-          </motion.div>
-        ))}
+              <div className={`absolute top-0 left-0 w-1 h-full ${isDelivered ? 'bg-green-500' : 'bg-red-600'} transition-colors duration-500`} />
+              
+              <div className="flex items-center gap-4">
+                <div className="bg-white/5 p-3 rounded-xl">
+                  {isDelivered ? (
+                    <CheckCircle2 className="w-6 h-6 text-green-500" />
+                  ) : (
+                    <Timer className="w-6 h-6 text-red-500 animate-pulse" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">Order #{order.id.split('-').slice(-1)[0]}</span>
+                    <span className={`text-[10px] font-bold uppercase flex items-center gap-1 ${isDelivered ? 'text-green-500' : 'text-red-500'}`}>
+                      {isDelivered ? (
+                        <>STAFF AT SEAT</>
+                      ) : (
+                        <>
+                          <Zap className="w-3 h-3 fill-current" />
+                          PREPARING
+                        </>
+                      )}
+                    </span>
+                  </div>
+                  <h4 className={`font-bold text-sm truncate ${isDelivered ? 'text-green-500' : ''}`}>
+                     {order.items.map(i => i.name).join(', ')}
+                  </h4>
+                </div>
+              </div>
+
+              <button
+                disabled={!isReadyToConfirm}
+                onClick={() => {
+                  fetch(`/api/orders/${order.id}/confirm`, { method: 'PUT' });
+                }}
+                className={`w-full ${isReadyToConfirm ? 'bg-green-600 hover:bg-green-500 shadow-green-600/20' : 'bg-white/5 cursor-not-allowed opacity-50'} py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all text-white border-none`}
+              >
+                {isReadyToConfirm ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    I've Successfully Received It
+                  </>
+                ) : (
+                  <>
+                    <Timer className="w-4 h-4" />
+                    Confirm in {secondsRemaining}s...
+                  </>
+                )}
+              </button>
+            </motion.div>
+          );
+        })}
       </AnimatePresence>
     </div>
   );
@@ -861,6 +885,7 @@ export default function App() {
           id: data.orderId,
           items: [...cartItems],
           timestamp: new Date().toLocaleTimeString(),
+          createdAt: Date.now(),
           status: 'Preparing',
           estimatedArrival: '1 min',
           seatNumber: seatNumber
